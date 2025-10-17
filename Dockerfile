@@ -1,19 +1,25 @@
-FROM php:8.2-cli
+FROM php:8.2-fpm
 
-# Installe les extensions nécessaires pour Laravel
+WORKDIR /var/www/html
+
+# Installer les dépendances
 RUN apt-get update && apt-get install -y \
     git unzip libpng-dev libzip-dev libonig-dev libxml2-dev && \
     docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# Installe Composer
+# Installer Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copie le code Laravel
-WORKDIR /var/www
+# Copier le code
 COPY . .
 
-# Installe les dépendances
-RUN composer install
+# Installer les dépendances Laravel
+RUN composer install --no-dev --optimize-autoloader
 
-# Commande par défaut : lancer le serveur Laravel
-CMD php artisan serve --host=0.0.0.0 --port=8000
+# Préparer Laravel pour production
+RUN php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache
+
+EXPOSE 9000
+CMD ["php-fpm"]
